@@ -1,9 +1,10 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 
-# The URL where your FastAPI server is running locally
-API_BASE_URL = "https://market-intelligence-platform-gbg9.onrender.com/"
+# This tells Streamlit: "Use the live URL if it exists in the environment, otherwise default to localhost"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Set up the page layout
 st.set_page_config(page_title="Market Intelligence Platform", layout="wide")
