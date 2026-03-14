@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 
 # The URL where your FastAPI server is running locally
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "https://market-intelligence-platform-gbg9.onrender.com/"
 
 # Set up the page layout
 st.set_page_config(page_title="Market Intelligence Platform", layout="wide")
