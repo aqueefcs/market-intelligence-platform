@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 import requests
-from backend.analytics import calculate_financial_metrics
+from backend.analytics import calculate_financial_metrics, run_rsi_backtest
 
 # Build the exact path to the .env file inside the backend folder
 env_path = Path(__file__).parent / ".env"
@@ -126,3 +126,43 @@ def get_all_companies():
     # Fetch only the ticker and name from MongoDB to keep the response fast and light
     companies = list(db.companies.find({}, {"_id": 0, "ticker": 1, "profile.companyName": 1}))
     return {"ingested_companies": companies}
+
+
+# --- NEW: Search Endpoint (Updated for Stable API) ---
+@app.get("/search/{query}")
+def search_company(query: str):
+    api_key = os.getenv("FMP_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="FMP API Key not configured")
+
+    # Use FMP's newer STABLE search endpoint
+    search_url = f"https://financialmodelingprep.com/stable/search-name?query={query}&limit=5&apikey={api_key}"
+    response = requests.get(search_url)
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to search FMP API")
+        
+    data = response.json()
+    
+    # FMP might return a massive list, let's slice it to just the top 5 results 
+    # to keep our Streamlit frontend running fast
+    results = data[:5] if isinstance(data, list) else []
+    
+    return {"results": results}
+
+
+# --- NEW: Vectorized Backtesting Endpoint ---
+@app.get("/companies/{ticker}/backtest")
+def get_backtest_results(ticker: str, capital: int = 10000):
+    ticker = ticker.upper()
+    company_data = db.companies.find_one({"ticker": ticker}, {"_id": 0})
+    
+    if not company_data or "historical_prices" not in company_data:
+        raise HTTPException(status_code=404, detail="Data not found.")
+        
+    backtest_results = run_rsi_backtest(company_data["historical_prices"], capital)
+    
+    return {
+        "ticker": ticker,
+        "results": backtest_results
+    }
